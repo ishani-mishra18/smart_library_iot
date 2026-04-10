@@ -3,6 +3,7 @@
 \usepackage{graphicx}
 \usepackage{array}
 \usepackage{hyperref}
+\usepackage{url}
 \usepackage{enumitem}
 \title{Smart Library Noise and Comfort Monitor\\Simulation-first IoT Architecture and Protocol Study}
 \author{Adheesh Garg 23BCT0122\\Ishani Mishra 23BCT0120}
@@ -12,7 +13,7 @@
 \maketitle
 
 \section*{Abstract}
-This project develops a simulation-first Smart Library monitoring system for noise and comfort supervision without physical hardware dependency. The implementation uses a split architecture with an Astro dashboard frontend, a Node.js backend for ingestion and decision logic, and a virtual sensor simulator that produces multi-zone readings for noise, temperature, humidity, occupancy, light, and CO$_2$. The protocol layer combines REST/HTTP, WebSocket, and MQTT-style topic publishing in simulation to evaluate architecture and protocol suitability for real-time indoor environmental monitoring.
+This project develops a simulation-first Smart Library monitoring system for noise and environmental comfort supervision without physical hardware dependency. The implementation employs a layered architecture comprising an Astro dashboard frontend, a Node.js backend for data ingestion and alert logic, and a virtual sensor simulator producing time-varying readings across five library zones. The protocol layer combines REST/HTTP, WebSocket, and MQTT-style topic publishing in simulation to formally evaluate architecture and protocol suitability for real-time indoor environmental monitoring. A detailed analysis of protocol selection rationale is provided, covering sensor-to-protocol assignment, transport characteristics, and deployment trade-offs for each communication channel.
 
 \section*{Introduction}
 The motivation for this project is to provide a practical IoT architecture and protocol demonstration for library comfort and acoustic discipline where direct hardware access is unavailable. Libraries require balance: noise should remain low for concentration, temperature should remain comfortable for long study sessions, and indoor air quality should remain healthy under dynamic occupancy. A simulation-first digital twin approach allows complete end-to-end validation of data ingestion, protocol behavior, alert logic, control commands, and user dashboard workflows before deployment to real sensors.
@@ -39,44 +40,70 @@ The motivation for this project is to provide a practical IoT architecture and p
 \textbf{Implemented architecture (simulation):}
 \begin{enumerate}[leftmargin=1.5em]
 	\item \textbf{Simulator layer}: 20 virtual sensors produce readings across five library zones.
-	\item \textbf{Protocol layer}: mixed publish model with REST/HTTP and MQTT-style topic simulation.
-	\item \textbf{Backend layer}: reading ingestion, threshold-based alerts, protocol statistics, telemetry logs, and command API.
-	\item \textbf{Dashboard layer}: Astro interface showing zone snapshot, protocol counters, alerts stream, and command controls.
+	\item \textbf{Protocol layer}: dual-transport ingestion supporting REST/HTTP POST to \path{/api/sensor-data} and MQTT-style topic publishing to \path{/api/mqtt-sim/publish}, with configurable selection per reading.
+	\item \textbf{Backend layer}: reading ingestion, threshold-based alerts, protocol statistics, latency telemetry, and command API.
+	\item \textbf{Dashboard layer}: Astro interface showing zone snapshot, protocol counters (HTTP vs MQTT-SIM), alerts stream, and command controls.
 \end{enumerate}
 
-\textbf{Logical flowchart (textual):}
+\textbf{Logical data flow:}
 {\small
 	\begin{verbatim}
-Virtual Sensor -> (HTTP or MQTT-sim) -> Backend Ingestion
+Virtual Sensor -> HTTP POST /api/sensor-data
+               OR
+               -> MQTT-sim POST /api/mqtt-sim/publish
+               (topic: library/{zone}/sensors/{id}/data)
+
 Backend Ingestion -> Alert Rules + Protocol Metrics -> Store
-Store -> REST/WS Events -> Astro Dashboard
+Store -> WebSocket push /api/snapshot -> Astro Dashboard
 Operator -> REST /api/commands -> Backend Broadcast
 \end{verbatim}
 }
 
 \textbf{Zone and metric model:}
 \begin{itemize}[leftmargin=1.5em]
-	\item Zones: Reading Hall, Study Rooms, Reference, Digital Lab, Kids Corner.
-	\item Metrics: noise dB(A), temperature, humidity, CO$_2$, occupancy, light.
+	\item Zones: Reading Hall (zone-reading-hall), Study Rooms (zone-study-rooms), Reference (zone-reference), Digital Resource Lab (zone-computer-lab), Children's Corner (zone-kids-corner).
+	\item Metrics and sensor distribution:
+	      \begin{itemize}[leftmargin=1.5em]
+		      \item Noise dB(A): deployed in all 5 zones (7 sensors total)
+		      \item Temperature: deployed in all 5 zones (5 sensors)
+		      \item Humidity: zone-reading-hall, zone-reference (2 sensors)
+		      \item CO$_2$ ppm: zone-reading-hall, zone-study-rooms, zone-computer-lab (3 sensors)
+		      \item Occupancy: zone-reading-hall, zone-study-rooms, zone-computer-lab (3 sensors)
+		      \item Light lux: zone-reference only (1 sensor)
+	      \end{itemize}
 	\item Rules: zone-specific warning and critical noise thresholds, comfort-aware checks for CO$_2$ and temperature.
 \end{itemize}
 
 \textbf{Scenario simulation:}
 \begin{itemize}[leftmargin=1.5em]
-	\item \texttt{normal}: baseline operation.
-	\item \texttt{exam-time}: reduced noise profile in silent zones.
-	\item \texttt{kids-hour}: elevated Kids Corner acoustic profile.
-	\item \texttt{hvac-failure}: elevated temperature and CO$_2$ risk in Digital Lab.
+	\item \texttt{normal}: baseline operation with standard zone thresholds.
+	\item \texttt{exam-time}: reduced noise profile with tighter thresholds enforced across silent zones (Reading Hall, Study Rooms, Reference).
+	\item \texttt{kids-hour}: elevated acoustic profile in Children's Corner, simulating after-school hours with elevated sound levels (55--75 dB(A)) and increased occupancy, reflecting typical child activity patterns while maintaining monitoring coverage for risk classification.
+	\item \texttt{hvac-failure}: elevated temperature (28--35\textdegree{}C) and CO$_2$ (1200--1800 ppm) risk profile in Digital Resource Lab, simulating HVAC system malfunction to validate alert thresholds and zone-specific comfort rules.
 \end{itemize}
 
-\textbf{Protocol comparison in implementation context:}
+\textbf{Protocol architecture and per-sensor communication model:}
+The system employs a dual-protocol ingestion layer backed by a real-time push mechanism for dashboard delivery. Each of the 20 virtual sensors transmits environmental readings using one of two transport protocols, with a configurable \texttt{PUBLISH\_MODE} governing the selection:
+
 \begin{itemize}[leftmargin=1.5em]
-	\item REST/HTTP is straightforward for integration and debugging.
-	\item MQTT-style topic simulation preserves IoT pub/sub semantics for scalable deployment planning.
-	\item WebSocket is effective for real-time dashboard updates with low UI latency.
+	\item \path{http} -- All sensors use synchronous HTTP POST requests to the \path{/api/sensor-data} endpoint.
+	\item \path{mqtt} -- All sensors use MQTT-style topic publishing via \path{/api/mqtt-sim/publish}, targeting the hierarchical topic \path{library/<zone>/sensors/<sensorId>/data}.
+	\item \path{mixed} (default) -- Each individual reading is randomly dispatched via HTTP or MQTT-sim with equal probability, enabling protocol co-existence validation.
 \end{itemize}
+
+\textbf{Protocol rationale and design decisions:}
+
+\begin{itemize}[leftmargin=1.5em]
+	\item \textbf{REST/HTTP for sensor ingestion.} The HTTP transport was selected for its ubiquity, firewall transparency, and debuggability. Sensors POST JSON payloads to a single endpoint, requiring no subscription state or broker infrastructure. This model suits interval-based sampling (5-second default cycle) where connection overhead is acceptable and integration testing can be performed with standard tooling (\path{curl}, browser dev tools). The stateless request-response pattern also simplifies backend scaling through horizontal replication.
+
+	\item \textbf{MQTT-style topic simulation for scalable pub/sub.} The MQTT-sim channel was introduced to model a production IoT deployment where a message broker (e.g., Mosquitto, HiveMQ) would handle topic-routed pub/sub. The hierarchical topic schema \path{library/<zone>/sensors/<sensorId>/data} enables selective subscription at the backend layer -- for instance, subscribing only to \path{library/zone-reading-hall/#} to filter irrelevant zones. MQTT's persistent-session, minimised-overhead model is better suited than HTTP for high-density sensor fleets, as the TCP connection is held open and QoS semantics can guarantee delivery. This simulation validates that the backend ingestion engine correctly demultiplexes topic-structured messages alongside direct HTTP payloads, confirming readiness for broker-based production deployment.
+
+	\item \textbf{WebSocket for dashboard real-time push.} The Astro frontend establishes a single WebSocket connection to \path{ws://localhost:3000} upon page load and receives three event types: \path{sensor_data} (live readings), \path{new_alert} (threshold breach notifications), and \path{command} (operator action confirmations). WebSocket was chosen over HTTP long-polling because it eliminates repeated HTTP handshake overhead and enables sub-100ms UI latency for live metric updates, which is essential for an operational monitoring dashboard. The bidirectional channel also permits future extensions such as server-initiated control commands targeting sensor actuators.
+\end{itemize}
+
+\textbf{Sensor-to-protocol assignment:} In the current simulation, protocol selection is uniform across all sensor types and zones. The mixed-mode operation (default) treats all 20 sensors identically, with each reading independently selecting HTTP or MQTT-sim transport. This uniform distribution was chosen to stress-test protocol co-existence rather than to reflect zone-specific hardware constraints. In a physical deployment, protocol assignment could be guided by sensor hardware capabilities (e.g., ESP8266 nodes with WiFi and MQTT libraries preferred over HTTP-only designs) or by network topology (sensors behind NAT requiring outbound-only MQTT connections). Critical safety sensors (CO$_2$ monitors in sealed zones) would benefit from MQTT's delivery acknowledgement semantics, while non-critical ambient sensors (light meters) could operate over HTTP without loss of functionality.
 
 \section*{Conclusion}
-The project successfully demonstrates a complete Smart Library IoT monitoring pipeline using simulation only, covering architecture, protocol behavior, alerting, and visualization. By combining Astro frontend modernization with a modular backend and virtual sensor fleet, the system can be evaluated and iterated without hardware dependency. The implementation validates protocol interoperability (REST, WebSocket, MQTT-style simulation) and provides a deployment-ready software foundation for future transition to physical devices and broker-based production IoT infrastructure.
+The project successfully demonstrates a complete Smart Library IoT monitoring pipeline operating entirely in software simulation, covering architectural design, protocol behavior analysis, threshold-based alerting, and interactive visualization. By combining an Astro frontend with a modular Node.js backend and a fleet of 20 virtual sensors, the system enables end-to-end validation of the data pipeline without hardware dependency. The implementation provides a detailed protocol analysis demonstrating that REST/HTTP is appropriate for straightforward sensor ingestion with minimal infrastructure, MQTT-style pub/sub is better suited for scalable multi-sensor deployments requiring selective subscription and delivery guarantees, and WebSocket is optimal for dashboard real-time push with minimal latency. The system validates full protocol interoperability across REST, WebSocket, and MQTT-style transports and serves as a deployment-ready software foundation for future transition to physical devices and broker-based production IoT infrastructure.
 
 \end{document}

@@ -164,3 +164,4 @@ vite.config.ts.timestamp-*
 *.vrb
 *.log
 *.xdv
+*.bak*

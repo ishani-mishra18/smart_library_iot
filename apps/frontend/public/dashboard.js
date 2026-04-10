@@ -65,6 +65,9 @@ function updateKPIs() {
 
 function updateZones() {
   const wrap = document.getElementById('zones');
+  const zoneSelect = document.getElementById('zoneSelect');
+  const prevZoneId = zoneSelect.value;
+
   wrap.innerHTML = state.zones.map((zone) => {
     const z = state.readings[zone.id] || {};
     const noise = z.noise ? `${z.noise.value.toFixed(1)} dB(A)` : '--';
@@ -84,8 +87,11 @@ function updateZones() {
     `;
   }).join('');
 
-  const zoneSelect = document.getElementById('zoneSelect');
   zoneSelect.innerHTML = state.zones.map((z) => `<option value="${z.id}">${z.name}</option>`).join('');
+
+  if (prevZoneId && state.zones.some((z) => z.id === prevZoneId)) {
+    zoneSelect.value = prevZoneId;
+  }
 }
 
 function updateProtocolStats() {
@@ -199,6 +205,8 @@ function connectWS() {
 
 async function postCommand(command) {
   const zoneId = document.getElementById('zoneSelect').value;
+  if (!zoneId) return;
+
   await fetch(`${BACKEND_HTTP}/api/commands`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
