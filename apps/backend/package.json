@@ -1,0 +1,18 @@
+{
+  "name": "@smart-library/backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "morgan": "^1.10.1",
+    "uuid": "^13.0.0",
+    "ws": "^8.20.0"
+  }
+}

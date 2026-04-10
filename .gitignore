@@ -142,3 +142,25 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Astro
+.astro/
+
+# LaTeX auxiliary files
+*.aux
+*.bbl
+*.blg
+*.idx
+*.ind
+*.lof
+*.lot
+*.out
+*.toc
+*.synctex*
+*.fls
+*.fdb_latexmk
+*.nav
+*.snm
+*.vrb
+*.log
+*.xdv

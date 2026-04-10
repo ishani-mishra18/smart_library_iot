@@ -1,0 +1,11 @@
+{
+  "name": "@smart-library/simulator",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "simulator.js",
+  "scripts": {
+    "dev": "node simulator.js",
+    "start": "node simulator.js"
+  }
+}

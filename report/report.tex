@@ -1,0 +1,82 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\title{Smart Library Noise and Comfort Monitor\\Simulation-first IoT Architecture and Protocol Study}
+\author{Smart Library IoT Project Team}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\section*{Abstract}
+This project develops a simulation-first Smart Library monitoring system for noise and comfort supervision without physical hardware dependency. The implementation uses a split architecture with an Astro dashboard frontend, a Node.js backend for ingestion and decision logic, and a virtual sensor simulator that produces multi-zone readings for noise, temperature, humidity, occupancy, light, and CO$_2$. The protocol layer combines REST/HTTP, WebSocket, and MQTT-style topic publishing in simulation to evaluate architecture and protocol suitability for real-time indoor environmental monitoring.
+
+\section*{Introduction}
+The motivation for this project is to provide a practical IoT architecture and protocol demonstration for library comfort and acoustic discipline where direct hardware access is unavailable. Libraries require balance: noise should remain low for concentration, temperature should remain comfortable for long study sessions, and indoor air quality should remain healthy under dynamic occupancy. A simulation-first digital twin approach allows complete end-to-end validation of data ingestion, protocol behavior, alert logic, control commands, and user dashboard workflows before deployment to real sensors.
+
+\section*{Problem formulation}
+\textbf{Problem statement:} Design and evaluate a complete Smart Library IoT monitoring system that can ingest environmental data, classify comfort risk, generate alerts, and support zone control actions, while operating entirely in software simulation.
+
+\textbf{Software components used:}
+\begin{itemize}[leftmargin=1.5em]
+	\item Node.js and Express backend for API and alert engine.
+	\item WebSocket server for live push updates.
+	\item Astro + Vite frontend dashboard for monitoring and interaction.
+	\item pnpm workspace for multi-app project management.
+	\item Virtual sensor simulator generating time-varying environmental signals.
+\end{itemize}
+
+\textbf{Hardware components used:}
+\begin{itemize}[leftmargin=1.5em]
+	\item No physical hardware in current phase.
+	\item All sensor nodes are represented as software agents.
+\end{itemize}
+
+\section*{Implementation}
+\textbf{Implemented architecture (simulation):}
+\begin{enumerate}[leftmargin=1.5em]
+	\item \textbf{Simulator layer}: 20 virtual sensors produce readings across five library zones.
+	\item \textbf{Protocol layer}: mixed publish model with REST/HTTP and MQTT-style topic simulation.
+	\item \textbf{Backend layer}: reading ingestion, threshold-based alerts, protocol statistics, telemetry logs, and command API.
+	\item \textbf{Dashboard layer}: Astro interface showing zone snapshot, protocol counters, alerts stream, and command controls.
+\end{enumerate}
+
+\textbf{Logical flowchart (textual):}
+{\small
+	\begin{verbatim}
+Virtual Sensor -> (HTTP or MQTT-sim) -> Backend Ingestion
+Backend Ingestion -> Alert Rules + Protocol Metrics -> Store
+Store -> REST/WS Events -> Astro Dashboard
+Operator -> REST /api/commands -> Backend Broadcast
+\end{verbatim}
+}
+
+\textbf{Zone and metric model:}
+\begin{itemize}[leftmargin=1.5em]
+	\item Zones: Reading Hall, Study Rooms, Reference, Digital Lab, Kids Corner.
+	\item Metrics: noise dB(A), temperature, humidity, CO$_2$, occupancy, light.
+	\item Rules: zone-specific warning and critical noise thresholds, comfort-aware checks for CO$_2$ and temperature.
+\end{itemize}
+
+\textbf{Scenario simulation:}
+\begin{itemize}[leftmargin=1.5em]
+	\item \texttt{normal}: baseline operation.
+	\item \texttt{exam-time}: reduced noise profile in silent zones.
+	\item \texttt{kids-hour}: elevated Kids Corner acoustic profile.
+	\item \texttt{hvac-failure}: elevated temperature and CO$_2$ risk in Digital Lab.
+\end{itemize}
+
+\textbf{Protocol comparison in implementation context:}
+\begin{itemize}[leftmargin=1.5em]
+	\item REST/HTTP is straightforward for integration and debugging.
+	\item MQTT-style topic simulation preserves IoT pub/sub semantics for scalable deployment planning.
+	\item WebSocket is effective for real-time dashboard updates with low UI latency.
+\end{itemize}
+
+\section*{Conclusion}
+The project successfully demonstrates a complete Smart Library IoT monitoring pipeline using simulation only, covering architecture, protocol behavior, alerting, and visualization. By combining Astro frontend modernization with a modular backend and virtual sensor fleet, the system can be evaluated and iterated without hardware dependency. The implementation validates protocol interoperability (REST, WebSocket, MQTT-style simulation) and provides a deployment-ready software foundation for future transition to physical devices and broker-based production IoT infrastructure.
+
+\end{document}
