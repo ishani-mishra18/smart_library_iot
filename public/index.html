@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Smart Library Noise & Comfort Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:     #0a0e1a;
+  --bg2:    #111827;
+  --bg3:    #1a2235;
+  --card:   #141d2e;
+  --card2:  #1e2a40;
+  --border: rgba(99,130,170,0.15);
+  --bord2:  rgba(99,130,170,0.3);
+  --text:   #e2e8f0;
+  --muted:  #7a91b0;
+  --blue:   #3b82f6;
+  --blue2:  #60a5fa;
+  --green:  #10b981;
+  --yellow: #f59e0b;
+  --red:    #ef4444;
+  --orange: #f97316;
+  --teal:   #14b8a6;
+  --purple: #8b5cf6;
+  --font:   'Space Grotesk', sans-serif;
+  --mono:   'JetBrains Mono', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(59,130,246,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59,130,246,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+}
+
+/* ─── HEADER ─── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,14,26,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px; height: 64px;
+  display: flex; align-items: center; gap: 16px;
+}
+.logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 700; }
+.logo-icon {
+  width: 38px; height: 38px;
+  background: linear-gradient(135deg, var(--blue), var(--purple));
+  border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;
+}
+.logo-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.conn-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 20px;
+  font-size: 12px; color: var(--muted); font-family: var(--mono);
+}
+.conn-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: blink 2s infinite; }
+.conn-dot.red { background: var(--red); animation: none; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.clock { font-family: var(--mono); font-size: 13px; color: var(--muted); }
+
+/* ─── LAYOUT ─── */
+main { max-width: 1600px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 22px; }
+
+/* ─── KPI STRIP ─── */
+.kpi-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; }
+.kpi {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px 20px; position: relative; overflow: hidden;
+}
+.kpi::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--ac, var(--blue));
+}
+.kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 8px; font-weight: 500; }
+.kpi-val { font-size: 30px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+.kpi-unit { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 3px; }
+.kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+/* ─── MAIN GRID ─── */
+.main-grid { display: grid; grid-template-columns: 1fr 1.1fr 340px; gap: 20px; }
+
+/* ─── ZONE CARDS ─── */
+.zones-col { display: flex; flex-direction: column; gap: 12px; }
+.section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 10px; }
+.zone-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 14px 18px; cursor: pointer; transition: border-color .2s, background .2s; position: relative;
+}
+.zone-card:hover { border-color: var(--bord2); background: var(--card2); }
+.zone-card.active { border-color: var(--blue); background: var(--card2); }
+.zone-card.active::after {
+  content: ''; position: absolute; right: 0; top: 25%; height: 50%; width: 3px;
+  background: var(--blue); border-radius: 2px 0 0 2px;
+}
+.zc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.zc-name { font-size: 14px; font-weight: 600; }
+.zc-floor {
+  font-size: 10px; background: var(--bg3); color: var(--muted);
+  padding: 2px 8px; border-radius: 10px; font-family: var(--mono);
+}
+.zc-metrics { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+.mpill {
+  display: flex; flex-direction: column; align-items: center;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 7px 4px;
+}
+.mpill.warn { border-color: rgba(245,158,11,.5); background: rgba(245,158,11,.05); }
+.mpill.crit { border-color: rgba(239,68,68,.6); background: rgba(239,68,68,.08); animation: crit-flash 1.4s infinite; }
+@keyframes crit-flash { 0%,100%{border-color:rgba(239,68,68,.5)} 50%{border-color:rgba(239,68,68,1)} }
+.mpill-icon { font-size: 13px; }
+.mpill-val { font-size: 12px; font-weight: 600; font-family: var(--mono); margin-top: 3px; }
+.mpill-lbl { font-size: 9px; color: var(--muted); margin-top: 1px; }
+.noise-track { margin-top: 9px; background: var(--bg3); border-radius: 3px; height: 4px; overflow: hidden; }
+.noise-fill { height: 100%; border-radius: 3px; transition: width .8s ease, background .4s; }
+
+/* ─── CHARTS COLUMN ─── */
+.charts-col { display: flex; flex-direction: column; gap: 18px; }
+.chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.ch-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.ch-title { font-size: 13px; font-weight: 600; }
+.ch-legend { display: flex; gap: 12px; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); }
+.leg-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+/* ─── ALERTS PANEL ─── */
+.alerts-col {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 18px; display: flex; flex-direction: column;
+}
+.al-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.al-badge {
+  background: var(--red); color: #fff; font-size: 11px; font-weight: 700;
+  font-family: var(--mono); border-radius: 10px; padding: 2px 7px;
+}
+.al-list { overflow-y: auto; display: flex; flex-direction: column; gap: 8px; max-height: 560px; }
+.al-list::-webkit-scrollbar { width: 3px; }
+.al-list::-webkit-scrollbar-thumb { background: var(--bord2); border-radius: 2px; }
+.al-item {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; border-left: 3px solid transparent; animation: sli .3s ease;
+}
+@keyframes sli { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+.al-item.critical { border-left-color: var(--red); background: rgba(239,68,68,.05); }
+.al-item.warning  { border-left-color: var(--yellow); }
+.al-item.info     { border-left-color: var(--blue); }
+.al-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.al-sev { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; font-family: var(--mono); }
+.al-sev.critical { color: var(--red); } .al-sev.warning { color: var(--yellow); } .al-sev.info { color: var(--blue2); }
+.al-time { font-size: 10px; color: var(--muted); font-family: var(--mono); }
+.al-msg { font-size: 12px; line-height: 1.45; }
+.al-zone { font-size: 11px; color: var(--muted); margin-top: 3px; }
+.al-empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 13px; }
+
+/* ─── SENSOR TABLE ─── */
+.full-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.stbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.stbl th { text-align: left; padding: 9px 12px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; font-weight: 500; border-bottom: 1px solid var(--border); }
+.stbl td { padding: 9px 12px; border-bottom: 1px solid rgba(99,130,170,.07); }
+.stbl tr:hover td { background: var(--bg3); }
+.sbadge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-family: var(--mono); }
+.sbadge.online  { background: rgba(16,185,129,.1); color: var(--green); }
+.sbadge.offline { background: rgba(239,68,68,.1);  color: var(--red); }
+.sdot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.chip { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 500; }
+.chip.Excellent { background: rgba(16,185,129,.15); color: var(--green); }
+.chip.Good      { background: rgba(59,130,246,.15); color: var(--blue2); }
+.chip.Fair      { background: rgba(245,158,11,.15); color: var(--yellow); }
+.chip.Poor      { background: rgba(239,68,68,.15);  color: var(--red); }
+
+/* ─── BOTTOM ROW ─── */
+.bot-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+/* ─── FLOOR PLAN ─── */
+.fp-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.fp-svg { width: 100%; }
+
+/* ─── COMMANDS ─── */
+.cmd-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+.zone-sel {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--font); font-size: 13px; padding: 9px 12px;
+  margin-bottom: 12px; cursor: pointer;
+}
+.cmd-btn {
+  width: 100%; display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  margin-bottom: 8px; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--text); font-family: var(--font); font-size: 13px; cursor: pointer; transition: all .15s;
+}
+.cmd-btn:hover { background: var(--card2); border-color: var(--bord2); }
+.cmd-btn:active { transform: scale(.98); }
+
+/* ─── MQTT LOG ─── */
+.mqtt-log {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px; font-family: var(--mono); font-size: 11px;
+  max-height: 100px; overflow-y: auto; margin-top: 10px;
+}
+.mqtt-log::-webkit-scrollbar { width: 3px; }
+.mqtt-log::-webkit-scrollbar-thumb { background: var(--bord2); }
+.ml { line-height: 1.7; color: var(--muted); }
+.ml .tp { color: var(--blue2); } .ml .vl { color: var(--green); }
+
+/* ─── FOOTER ─── */
+footer { text-align: center; padding: 18px; font-size: 11px; color: var(--muted); border-top: 1px solid var(--border); font-family: var(--mono); }
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:1150px) { .main-grid { grid-template-columns: 1fr 1fr; } .alerts-col { grid-column: 1/-1; } }
+@media(max-width:720px)  { .main-grid, .bot-row { grid-template-columns: 1fr; } .kpi-strip { grid-template-columns: repeat(2,1fr); } }
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ─── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">📚</div>
+    <div>
+      <div>Smart Library Monitor</div>
+      <div class="logo-sub">IoT Architecture &amp; Protocol — Real-time Noise &amp; Comfort System</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="conn-pill">
+      <div class="conn-dot" id="connDot"></div>
+      <span id="connLabel">Connecting...</span>
+    </div>
+    <div class="clock" id="clock">--:--:--</div>
+  </div>
+</header>
+
+<main>
+
+<!-- ─── KPI STRIP ─── -->
+<div class="kpi-strip">
+  <div class="kpi" style="--ac:var(--blue)">
+    <div class="kpi-label">Avg Noise Level</div>
+    <div class="kpi-val" id="kNoise">—<span class="kpi-unit">dB</span></div>
+    <div class="kpi-sub" id="kNoiseSub">Library-wide</div>
+  </div>
+  <div class="kpi" style="--ac:var(--orange)">
+    <div class="kpi-label">Avg Temperature</div>
+    <div class="kpi-val" id="kTemp">—<span class="kpi-unit">°C</span></div>
+    <div class="kpi-sub">Target: 19–26°C</div>
+  </div>
+  <div class="kpi" style="--ac:var(--teal)">
+    <div class="kpi-label">Avg CO₂</div>
+    <div class="kpi-val" id="kCO2">—<span class="kpi-unit">ppm</span></div>
+    <div class="kpi-sub">Target: &lt;800 ppm</div>
+  </div>
+  <div class="kpi" style="--ac:var(--red)">
+    <div class="kpi-label">Active Alerts</div>
+    <div class="kpi-val" id="kAlerts">0</div>
+    <div class="kpi-sub" id="kAlertsSub">All zones clear</div>
+  </div>
+  <div class="kpi" style="--ac:var(--green)">
+    <div class="kpi-label">Sensors Online</div>
+    <div class="kpi-val" id="kSensors">0<span class="kpi-unit">/20</span></div>
+    <div class="kpi-sub">IoT devices</div>
+  </div>
+  <div class="kpi" style="--ac:var(--purple)">
+    <div class="kpi-label">Comfort Index</div>
+    <div class="kpi-val" id="kComfort" style="font-size:20px">—</div>
+    <div class="kpi-sub">Environment quality</div>
+  </div>
+</div>
+
+<!-- ─── MAIN GRID ─── -->
+<div class="main-grid">
+
+  <!-- ZONES COLUMN -->
+  <div class="zones-col">
+    <div class="section-label">📍 Live Zone Status</div>
+    <div id="zonesWrap"></div>
+  </div>
+
+  <!-- CHARTS COLUMN -->
+  <div class="charts-col">
+    <div class="chart-card">
+      <div class="ch-head">
+        <div class="ch-title">🔊 Noise Level — Real-time</div>
+        <div class="ch-legend">
+          <div class="leg"><div class="leg-dot" style="background:var(--blue)"></div>Avg dB(A)</div>
+          <div class="leg"><div class="leg-dot" style="background:rgba(239,68,68,.6)"></div>Threshold</div>
+        </div>
+      </div>
+      <canvas id="chartNoise" height="130"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="ch-head">
+        <div class="ch-title">🌡️ Temperature &amp; CO₂ Trend</div>
+        <div class="ch-legend">
+          <div class="leg"><div class="leg-dot" style="background:var(--orange)"></div>Temp °C</div>
+          <div class="leg"><div class="leg-dot" style="background:var(--teal)"></div>CO₂ ÷10</div>
+        </div>
+      </div>
+      <canvas id="chartComfort" height="130"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="ch-head"><div class="ch-title">📊 Zone Noise Comparison</div></div>
+      <canvas id="chartBar" height="120"></canvas>
+    </div>
+  </div>
+
+  <!-- ALERTS COLUMN -->
+  <div class="alerts-col">
+    <div class="al-head">
+      <div class="ch-title">🚨 Live Alerts</div>
+      <span class="al-badge" id="alertBadge">0</span>
+    </div>
+    <div class="al-list" id="alertsList">
+      <div class="al-empty">✓ No active alerts</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── SENSOR TABLE ─── -->
+<div class="full-card">
+  <div class="ch-head" style="margin-bottom:14px">
+    <div class="ch-title">📡 IoT Sensor Registry — All Devices</div>
+    <span style="font-size:11px;color:var(--muted);font-family:var(--mono)">Live · auto-refreshing</span>
+  </div>
+  <div style="overflow-x:auto">
+    <table class="stbl">
+      <thead>
+        <tr>
+          <th>Sensor ID</th><th>Zone</th><th>Type</th>
+          <th>Latest Value</th><th>Comfort</th><th>Status</th><th>Last Reading</th>
+        </tr>
+      </thead>
+      <tbody id="sensorTbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ─── BOTTOM ROW ─── -->
+<div class="bot-row">
+
+  <!-- FLOOR PLAN -->
+  <div class="fp-card">
+    <div class="section-label">🗺️ Library Floor Plan — Live Noise Heat Map</div>
+    <svg class="fp-svg" viewBox="0 0 700 310">
+      <rect width="700" height="310" fill="rgba(17,24,39,0.5)" rx="10"/>
+
+      <!-- Main Reading Hall -->
+      <rect id="fp-zone-reading-hall" x="20" y="20" width="280" height="185" rx="8"
+        fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.35)" stroke-width="1.5"/>
+      <text x="160" y="46" text-anchor="middle" font-family="Space Grotesk" font-size="11" fill="#7a91b0">Main Reading Hall</text>
+      <text id="fp-val-reading-hall" x="160" y="118" text-anchor="middle" font-family="JetBrains Mono"
+        font-size="36" font-weight="700" fill="#3b82f6">—</text>
+      <text x="160" y="142" text-anchor="middle" font-family="Space Grotesk" font-size="10" fill="#5a7a9a">dB(A)</text>
+
+      <!-- Reference Section -->
+      <rect id="fp-zone-reference" x="20" y="225" width="140" height="75" rx="8"
+        fill="rgba(139,92,246,0.08)" stroke="rgba(139,92,246,0.35)" stroke-width="1.5"/>
+      <text x="90" y="247" text-anchor="middle" font-family="Space Grotesk" font-size="10" fill="#7a91b0">Reference</text>
+      <text id="fp-val-reference" x="90" y="277" text-anchor="middle" font-family="JetBrains Mono"
+        font-size="22" font-weight="700" fill="#8b5cf6">—</text>
+
+      <!-- Kids Corner -->
+      <rect id="fp-zone-kids-corner" x="180" y="225" width="120" height="75" rx="8"
+        fill="rgba(249,115,22,0.08)" stroke="rgba(249,115,22,0.35)" stroke-width="1.5"/>
+      <text x="240" y="247" text-anchor="middle" font-family="Space Grotesk" font-size="10" fill="#7a91b0">Kids Corner</text>
+      <text id="fp-val-kids-corner" x="240" y="277" text-anchor="middle" font-family="JetBrains Mono"
+        font-size="22" font-weight="700" fill="#f97316">—</text>
+
+      <!-- Group Study Rooms -->
+      <rect id="fp-zone-study-rooms" x="320" y="20" width="180" height="145" rx="8"
+        fill="rgba(20,184,166,0.08)" stroke="rgba(20,184,166,0.35)" stroke-width="1.5"/>
+      <text x="410" y="42" text-anchor="middle" font-family="Space Grotesk" font-size="11" fill="#7a91b0">Group Study</text>
+      <text id="fp-val-study-rooms" x="410" y="112" text-anchor="middle" font-family="JetBrains Mono"
+        font-size="36" font-weight="700" fill="#14b8a6">—</text>
+      <text x="410" y="134" text-anchor="middle" font-family="Space Grotesk" font-size="10" fill="#5a7a9a">dB(A)</text>
+
+      <!-- Study Pods (dashed) -->
+      <rect x="320" y="182" width="180" height="113" rx="8"
+        fill="rgba(20,184,166,0.03)" stroke="rgba(20,184,166,0.2)" stroke-width="1" stroke-dasharray="4,3"/>
+      <text x="410" y="244" text-anchor="middle" font-family="Space Grotesk" font-size="10" fill="#4a6a80">Study Pods</text>
+
+      <!-- Digital Lab -->
+      <rect id="fp-zone-computer-lab" x="520" y="20" width="160" height="265" rx="8"
+        fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.35)" stroke-width="1.5"/>
+      <text x="600" y="42" text-anchor="middle" font-family="Space Grotesk" font-size="10" fill="#7a91b0">Digital Lab</text>
+      <text id="fp-val-computer-lab" x="600" y="163" text-anchor="middle" font-family="JetBrains Mono"
+        font-size="36" font-weight="700" fill="#10b981">—</text>
+      <text x="600" y="183" text-anchor="middle" font-family="Space Grotesk" font-size="10" fill="#5a7a9a">dB(A)</text>
+    </svg>
+  </div>
+
+  <!-- COMMANDS PANEL -->
+  <div class="cmd-card">
+    <div class="section-label">⚙️ Zone Commands</div>
+    <select class="zone-sel" id="cmdZone">
+      <option value="zone-reading-hall">📖 Main Reading Hall</option>
+      <option value="zone-study-rooms">👥 Group Study Rooms</option>
+      <option value="zone-reference">📚 Reference Section</option>
+      <option value="zone-computer-lab">💻 Digital Resource Lab</option>
+      <option value="zone-kids-corner">🧒 Children's Corner</option>
+    </select>
+
+    <button class="cmd-btn" onclick="sendCmd('alert_noise')">🔔 Trigger Noise Alert</button>
+    <button class="cmd-btn" onclick="sendCmd('silence')">🔕 Silence Zone Alerts</button>
+    <button class="cmd-btn" onclick="sendCmd('ac_cool')">❄️ Activate AC Cooling</button>
+    <button class="cmd-btn" onclick="sendCmd('ventilation')">💨 Increase Ventilation</button>
+    <button class="cmd-btn" onclick="sendCmd('emergency')">🚨 Emergency Alert</button>
+
+    <div style="margin-top:8px;font-size:10px;color:var(--muted);font-family:var(--mono)">MQTT Publish Log</div>
+    <div class="mqtt-log" id="mqttLog"></div>
+  </div>
+
+</div>
+
+</main>
+<footer>
+  Smart Library Noise &amp; Comfort Monitor &nbsp;·&nbsp;
+  IoT Architecture &amp; Protocol Project &nbsp;·&nbsp;
+  MQTT · WebSocket · REST API · Node.js
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
